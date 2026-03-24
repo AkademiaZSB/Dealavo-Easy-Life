@@ -50,44 +50,77 @@ def czekaj_na_zaladowanie(page, retailer):
             return False
     return False
 
+def znajdz_kontener_cen(page, retailer):
+    """
+    Szuka kontenera z listą cen/retailerów.
+    Jeśli znajdzie wiele podobnych wierszy — zwraca cały kontener (porównywarka).
+    Jeśli nie — zwraca None (strona produktu, robimy cały ekran).
+    """
+    retailer_lower = retailer.lower()
+
+    candidates = page.locator(f"text={retailer}").all()
+    if not candidates:
+        candidates = page.locator(
+            f"xpath=//*[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), '{retailer_lower}')]"
+        ).all()
+
+    if not candidates:
+        return None
+
+    element = candidates[0]
+
+    # Idź w górę drzewa DOM szukając kontenera z wieloma podobnymi dziećmi (lista ofert)
+    for poziom in range(1, 8):
+        try:
+            rodzic = element.locator(f"xpath=ancestor::*[{poziom}]")
+            if rodzic.count() == 0:
+                break
+
+            rodzic_el = rodzic.first
+
+            # Sprawdź czy rodzic ma wiele dzieci (lista ofert) — szukaj li, tr, lub divów z ceną
+            ilosc_li = rodzic_el.locator("li").count()
+            ilosc_tr = rodzic_el.locator("tr").count()
+            ilosc_cen = rodzic_el.locator("xpath=//*[contains(text(), '€') or contains(text(), '$') or contains(text(), '£') or contains(text(), 'zł')]").count()
+
+            if ilosc_li >= 3 or ilosc_tr >= 3 or ilosc_cen >= 3:
+                return rodzic_el
+        except:
+            continue
+
+    # Fallback: zwróć bezpośredni wiersz retailera
+    try:
+        tr = element.locator("xpath=ancestor::tr[1]")
+        if tr.count() > 0:
+            return tr.first
+    except:
+        pass
+
+    return element.first
+
 def zrob_screenshot(page, url, retailer, fraza, idx, folder):
     try:
         page.goto(url, timeout=30000, wait_until="domcontentloaded")
         czekaj_na_zaladowanie(page, retailer)
 
-        retailer_lower = retailer.lower()
-        candidates = page.locator(f"text={retailer}").all()
-        if not candidates:
-            candidates = page.locator(
-                f"xpath=//*[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), '{retailer_lower}')]"
-            ).all()
-
         bezpieczna_fraza = re.sub(r'[^\w\-]', '_', fraza)
         bezpieczny_retailer = re.sub(r'[^\w\-]', '_', retailer)
+        nazwa_pliku = f"{bezpieczna_fraza}_{bezpieczny_retailer}_{idx}.png"
+        sciezka = os.path.join(folder, nazwa_pliku)
 
-        if candidates:
-            element = candidates[0]
-            try:
-                rodzic_tr = element.locator("xpath=ancestor::tr[1]")
-                if rodzic_tr.count() > 0:
-                    element = rodzic_tr
-                else:
-                    element = candidates[0].locator("xpath=ancestor::*[3]")
-            except:
-                element = candidates[0]
+        kontener = znajdz_kontener_cen(page, retailer)
 
-            nazwa_pliku = f"{bezpieczna_fraza}_{bezpieczny_retailer}_{idx}.png"
-            sciezka = os.path.join(folder, nazwa_pliku)
-            element.first.screenshot(path=sciezka)
-            print(f"  ✓ Screenshot zapisany: {nazwa_pliku}")
-            return True
+        if kontener:
+            kontener.scroll_into_view_if_needed()
+            page.wait_for_timeout(500)
+            kontener.screenshot(path=sciezka)
+            print(f"  ✓ Screenshot zapisany (lista cen): {nazwa_pliku}")
         else:
-            print(f"  ✗ Nie znaleziono '{retailer}' na stronie — zapisuję całą stronę.")
-            nazwa_pliku = f"{bezpieczna_fraza}_{bezpieczny_retailer}_{idx}_calastrona.png"
-            sciezka = os.path.join(folder, nazwa_pliku)
+            print(f"  → Strona produktu lub brak listy — zapisuję cały ekran.")
             page.screenshot(path=sciezka, full_page=False)
-            print(f"  → Zapisano: {nazwa_pliku}")
-            return False
+            print(f"  ✓ Screenshot zapisany (cały ekran): {nazwa_pliku}")
+
+        return True
 
     except Exception as e:
         print(f"  ✗ Błąd: {e}")
