@@ -250,18 +250,10 @@ def main():
                     print(f"  Otwieram stronę — rozwiąż captchę, czekam...")
                     try:
                         page.goto(zadanie["url"], timeout=30000, wait_until="domcontentloaded")
-                        page.wait_for_timeout(3000)
+                        page.wait_for_timeout(2000)
 
-                        # Czekaj tylko jeśli captcha nadal aktywna (max 120 sekund)
-                        for _ in range(60):
-                            tresc = page.content().lower()
-                            jest_captcha = any(x in tresc for x in ["captcha", "robot", "verify you are human", "challenge"])
-                            if not jest_captcha:
-                                break
-                            page.wait_for_timeout(2000)
+                        input(f"  Zamknij cookies/captchę na stronie, a następnie wciśnij Enter aby zrobić screenshot...")
 
-                        print(f"  Strona gotowa — robię screenshot...")
-                        zamknij_cookies(page)
 
                         # Screenshot bez ponownego page.goto()
                         bezpieczna_fraza = re.sub(r'[^\w\-]', '_', zadanie["fraza"])
