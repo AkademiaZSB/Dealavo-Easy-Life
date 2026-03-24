@@ -176,13 +176,17 @@ def main():
                     print(f"  Otwieram stronę — rozwiąż captchę, czekam...")
                     try:
                         page.goto(zadanie["url"], timeout=30000, wait_until="domcontentloaded")
+                        page.wait_for_timeout(3000)
 
-                        # Czekaj aż retailer pojawi się na stronie (max 120 sekund)
+                        # Czekaj tylko jeśli captcha nadal aktywna (max 120 sekund)
                         for _ in range(60):
-                            page.wait_for_timeout(2000)
-                            if zadanie["retailer"].lower() in page.content().lower():
+                            tresc = page.content().lower()
+                            jest_captcha = any(x in tresc for x in ["captcha", "robot", "verify you are human", "challenge"])
+                            if not jest_captcha:
                                 break
+                            page.wait_for_timeout(2000)
 
+                        print(f"  Strona gotowa — robię screenshot...")
                         zrob_screenshot(page, zadanie["url"], zadanie["retailer"],
                                         zadanie["fraza"], zadanie["idx"], screenshots_folder)
                     except Exception as e:
