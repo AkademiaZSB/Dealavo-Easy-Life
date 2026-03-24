@@ -3,7 +3,7 @@ import re
 import json
 import webbrowser
 
-OUTPUT_FOLDER = os.path.join(os.path.dirname(__file__), "output")
+OUTPUT_FOLDER = os.path.join(os.path.dirname(__file__), "..", "output")
 
 def wybierz_pliki_json():
     pliki_json = [f for f in os.listdir(OUTPUT_FOLDER) if f.endswith(".json")]

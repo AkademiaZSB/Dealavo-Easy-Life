@@ -5,7 +5,7 @@ import json
 from PIL import Image, ImageDraw, ImageFont
 
 FOLDER = os.path.expanduser("~/Downloads/QL")
-OUTPUT_FOLDER = os.path.join(os.path.dirname(__file__), "output")
+OUTPUT_FOLDER = os.path.join(os.path.dirname(__file__), "..", "output")
 
 # Kolory
 KOL_TLO_NAGLOWEK = (52, 73, 94)

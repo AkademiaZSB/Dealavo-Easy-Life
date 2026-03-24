@@ -2,7 +2,7 @@ import os
 import re
 import json
 
-OUTPUT_FOLDER = os.path.join(os.path.dirname(__file__), "output")
+OUTPUT_FOLDER = os.path.join(os.path.dirname(__file__), "..", "output")
 
 def main():
     print("=== QLC — Czyszczenie historii ===\n")

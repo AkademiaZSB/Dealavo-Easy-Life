@@ -3,7 +3,7 @@ import re
 import json
 from PIL import Image, ImageDraw, ImageFont
 
-OUTPUT_FOLDER = os.path.join(os.path.dirname(__file__), "output")
+OUTPUT_FOLDER = os.path.join(os.path.dirname(__file__), "..", "output")
 
 KOL_TLO_NAGLOWEK = (52, 73, 94)
 KOL_TEKST_NAGLOWEK = (255, 255, 255)
