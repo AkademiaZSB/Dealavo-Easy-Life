@@ -142,24 +142,24 @@ def zrob_screenshot(page, url, retailer, fraza, idx, folder):
         nazwa_pliku = f"{bezpieczna_fraza}_{bezpieczny_retailer}_{idx}.png"
         sciezka = os.path.join(folder, nazwa_pliku)
 
-        kontener = znajdz_kontener_cen(page, retailer)
+        # Znajdź element retailera i scrolluj do niego przez JS
+        retailer_lower = retailer.lower()
+        candidates = page.locator(f"text={retailer}").all()
+        if not candidates:
+            candidates = page.locator(
+                f"xpath=//*[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), '{retailer_lower}')]"
+            ).all()
 
-        if kontener:
+        if candidates:
             try:
-                kontener.scroll_into_view_if_needed(timeout=3000)
-                page.wait_for_timeout(500)
+                page.evaluate("el => el.scrollIntoView({block: 'center', behavior: 'instant'})",
+                               candidates[0].element_handle())
+                page.wait_for_timeout(800)
             except:
                 pass
-            try:
-                kontener.screenshot(path=sciezka)
-                print(f"  ✓ Screenshot zapisany (lista cen): {nazwa_pliku}")
-            except:
-                page.screenshot(path=sciezka, full_page=False)
-                print(f"  ✓ Screenshot zapisany (cały ekran — fallback): {nazwa_pliku}")
-        else:
-            print(f"  → Strona produktu lub brak listy — zapisuję cały ekran.")
-            page.screenshot(path=sciezka, full_page=False)
-            print(f"  ✓ Screenshot zapisany (cały ekran): {nazwa_pliku}")
+
+        page.screenshot(path=sciezka, full_page=False)
+        print(f"  ✓ Screenshot zapisany: {nazwa_pliku}")
 
         return True
 
@@ -261,22 +261,23 @@ def main():
                         nazwa_pliku = f"{bezpieczna_fraza}_{bezpieczny_retailer}_{zadanie['idx']}.png"
                         sciezka = os.path.join(screenshots_folder, nazwa_pliku)
 
-                        kontener = znajdz_kontener_cen(page, zadanie["retailer"])
-                        if kontener:
+                        retailer_lower = zadanie["retailer"].lower()
+                        candidates = page.locator(f"text={zadanie['retailer']}").all()
+                        if not candidates:
+                            candidates = page.locator(
+                                f"xpath=//*[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), '{retailer_lower}')]"
+                            ).all()
+
+                        if candidates:
                             try:
-                                kontener.scroll_into_view_if_needed(timeout=3000)
-                                page.wait_for_timeout(500)
+                                page.evaluate("el => el.scrollIntoView({block: 'center', behavior: 'instant'})",
+                                               candidates[0].element_handle())
+                                page.wait_for_timeout(800)
                             except:
                                 pass
-                            try:
-                                kontener.screenshot(path=sciezka)
-                                print(f"  ✓ Screenshot zapisany (lista cen): {nazwa_pliku}")
-                            except:
-                                page.screenshot(path=sciezka, full_page=False)
-                                print(f"  ✓ Screenshot zapisany (cały ekran): {nazwa_pliku}")
-                        else:
-                            page.screenshot(path=sciezka, full_page=False)
-                            print(f"  ✓ Screenshot zapisany (cały ekran): {nazwa_pliku}")
+
+                        page.screenshot(path=sciezka, full_page=False)
+                        print(f"  ✓ Screenshot zapisany: {nazwa_pliku}")
                     except Exception as e:
                         print(f"  ✗ Błąd: {e}")
 
