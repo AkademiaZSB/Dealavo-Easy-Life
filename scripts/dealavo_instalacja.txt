@@ -1,0 +1,13 @@
+=== Dealavo Tools — instalacja dla kolegi ===
+
+Repo: https://github.com/AkademiaZSB/Dealavo-Easy-Life
+
+--- Linux / Mac ---
+curl -fsSL https://raw.githubusercontent.com/AkademiaZSB/Dealavo-Easy-Life/main/install.sh | bash
+
+--- Windows (PowerShell) ---
+irm https://raw.githubusercontent.com/AkademiaZSB/Dealavo-Easy-Life/main/install.ps1 | iex
+
+--- Po instalacji ---
+Zrestartuj terminal, następnie wpisuj: ql  lub  qle
+Pliki CSV wrzucaj do folderu: ~/Downloads/QL

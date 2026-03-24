@@ -1,0 +1,54 @@
+{
+  "fraza": "dp2mjgcutp1flnrd24qgtanhpuar08r",
+  "retailers": [
+    "babypark"
+  ],
+  "wyniki": [
+    {
+      "plik": "results_offers_DorelJuvenile_DE_2026-03-24-04.csv",
+      "wiersz_nr": 2242,
+      "dane": {
+        "Uid": "dp2mjgcutp1flnrd24qgtanhpuar08r",
+        "Source": "idealo.de",
+        "Retailer id": "5438824",
+        "Retailer name": "babypark_de",
+        "Retailer url": "https://www.babypark.de/",
+        "Product name": "Maxi-Cosi Pebble 360 i-Size Babyschale Essential Black",
+        "Product url": "https://www.idealo.de/preisvergleich/OffersOfProduct/201374394_-pebble-360-essential-black-maxi-cosi.html",
+        "Price": "168.3",
+        "Crossed out price": "",
+        "Shipping price": "0.0",
+        "In stock": "1",
+        "Brand": "Maxi-Cosi",
+        "Name": "8044672110",
+        "RRP": "",
+        "Producer": "MAXI COSI",
+        "Model": "PEBBLE 360",
+        "Similar Comps": "0"
+      }
+    },
+    {
+      "plik": "results_offers_DorelJuvenile_DE_2026-03-24-04.csv",
+      "wiersz_nr": 2250,
+      "dane": {
+        "Uid": "dp2mjgcutp1flnrd24qgtanhpuar08r",
+        "Source": "Shop webpage",
+        "Retailer id": "5438824",
+        "Retailer name": "babypark_de",
+        "Retailer url": "https://www.babypark.de/",
+        "Product name": "Maxi-Cosi Pebble 360 i-Size Babyschale Essential Black",
+        "Product url": "https://www.babypark.de/maxi-cosi-pebble-360-i-size-autositz.html?color=613",
+        "Price": "168.3",
+        "Crossed out price": "229.99",
+        "Shipping price": "0.0",
+        "In stock": "1",
+        "Brand": "Maxi-Cosi",
+        "Name": "8044672110",
+        "RRP": "229.99",
+        "Producer": "MAXI COSI",
+        "Model": "PEBBLE 360",
+        "Similar Comps": "0"
+      }
+    }
+  ]
+}
