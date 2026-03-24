@@ -50,6 +50,39 @@ def czekaj_na_zaladowanie(page, retailer):
             return False
     return False
 
+def zamknij_cookies(page):
+    """Próbuje automatycznie kliknąć przycisk akceptacji cookies."""
+    selektory = [
+        "button:has-text('Accept all')",
+        "button:has-text('Accept All')",
+        "button:has-text('Accept cookies')",
+        "button:has-text('Accept Cookies')",
+        "button:has-text('Akzeptieren')",
+        "button:has-text('Alle akzeptieren')",
+        "button:has-text('Zgadzam się')",
+        "button:has-text('Akceptuję')",
+        "button:has-text('OK')",
+        "button:has-text('Agree')",
+        "button:has-text('I agree')",
+        "button:has-text('Got it')",
+        "button:has-text('Allow all')",
+        "button:has-text('Allow All')",
+        "[id*='accept'][id*='cookie']",
+        "[class*='accept'][class*='cookie']",
+        "[id*='cookie-accept']",
+        "[data-testid*='accept']",
+    ]
+    for selektor in selektory:
+        try:
+            btn = page.locator(selektor).first
+            if btn.is_visible(timeout=500):
+                btn.click()
+                page.wait_for_timeout(1000)
+                return True
+        except:
+            continue
+    return False
+
 def znajdz_kontener_cen(page, retailer):
     """
     Szuka kontenera z listą cen/retailerów.
@@ -102,6 +135,7 @@ def zrob_screenshot(page, url, retailer, fraza, idx, folder):
     try:
         page.goto(url, timeout=30000, wait_until="domcontentloaded")
         czekaj_na_zaladowanie(page, retailer)
+        zamknij_cookies(page)
 
         bezpieczna_fraza = re.sub(r'[^\w\-]', '_', fraza)
         bezpieczny_retailer = re.sub(r'[^\w\-]', '_', retailer)
@@ -227,6 +261,7 @@ def main():
                             page.wait_for_timeout(2000)
 
                         print(f"  Strona gotowa — robię screenshot...")
+                        zamknij_cookies(page)
 
                         # Screenshot bez ponownego page.goto()
                         bezpieczna_fraza = re.sub(r'[^\w\-]', '_', zadanie["fraza"])
