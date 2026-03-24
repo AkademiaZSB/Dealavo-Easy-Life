@@ -111,10 +111,17 @@ def zrob_screenshot(page, url, retailer, fraza, idx, folder):
         kontener = znajdz_kontener_cen(page, retailer)
 
         if kontener:
-            kontener.scroll_into_view_if_needed()
-            page.wait_for_timeout(500)
-            kontener.screenshot(path=sciezka)
-            print(f"  ✓ Screenshot zapisany (lista cen): {nazwa_pliku}")
+            try:
+                kontener.scroll_into_view_if_needed(timeout=3000)
+                page.wait_for_timeout(500)
+            except:
+                pass
+            try:
+                kontener.screenshot(path=sciezka)
+                print(f"  ✓ Screenshot zapisany (lista cen): {nazwa_pliku}")
+            except:
+                page.screenshot(path=sciezka, full_page=False)
+                print(f"  ✓ Screenshot zapisany (cały ekran — fallback): {nazwa_pliku}")
         else:
             print(f"  → Strona produktu lub brak listy — zapisuję cały ekran.")
             page.screenshot(path=sciezka, full_page=False)
@@ -220,8 +227,29 @@ def main():
                             page.wait_for_timeout(2000)
 
                         print(f"  Strona gotowa — robię screenshot...")
-                        zrob_screenshot(page, zadanie["url"], zadanie["retailer"],
-                                        zadanie["fraza"], zadanie["idx"], screenshots_folder)
+
+                        # Screenshot bez ponownego page.goto()
+                        bezpieczna_fraza = re.sub(r'[^\w\-]', '_', zadanie["fraza"])
+                        bezpieczny_retailer = re.sub(r'[^\w\-]', '_', zadanie["retailer"])
+                        nazwa_pliku = f"{bezpieczna_fraza}_{bezpieczny_retailer}_{zadanie['idx']}.png"
+                        sciezka = os.path.join(screenshots_folder, nazwa_pliku)
+
+                        kontener = znajdz_kontener_cen(page, zadanie["retailer"])
+                        if kontener:
+                            try:
+                                kontener.scroll_into_view_if_needed(timeout=3000)
+                                page.wait_for_timeout(500)
+                            except:
+                                pass
+                            try:
+                                kontener.screenshot(path=sciezka)
+                                print(f"  ✓ Screenshot zapisany (lista cen): {nazwa_pliku}")
+                            except:
+                                page.screenshot(path=sciezka, full_page=False)
+                                print(f"  ✓ Screenshot zapisany (cały ekran): {nazwa_pliku}")
+                        else:
+                            page.screenshot(path=sciezka, full_page=False)
+                            print(f"  ✓ Screenshot zapisany (cały ekran): {nazwa_pliku}")
                     except Exception as e:
                         print(f"  ✗ Błąd: {e}")
 
