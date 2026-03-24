@@ -26,48 +26,41 @@ def wybierz_pliki_json():
         print("Nieprawidłowy wybór.")
         return []
 
+def sprawdz_captche(page, retailer):
+    """Sprawdza czy strona ma captchę. Zwraca (jest_captcha, jest_retailer)."""
+    page.wait_for_timeout(3000)
+    tresc = page.content().lower()
+    jest_captcha = any(x in tresc for x in ["captcha", "robot", "verify you are human", "challenge"])
+    jest_retailer = retailer.lower() in tresc
+    return jest_captcha, jest_retailer
+
 def czekaj_na_zaladowanie(page, retailer):
-    """Czeka aż strona się załaduje i nie ma captchy."""
-    retailer_lower = retailer.lower()
-    print(f"  Czekam na załadowanie strony...")
-
-    for proba in range(30):  # max 60 sekund
+    """Czeka na załadowanie strony (bez captchy). Zwraca True jeśli retailer widoczny."""
+    for proba in range(15):  # max 30 sekund
         page.wait_for_timeout(2000)
-
-        # Sprawdź czy captcha jest aktywna
         tresc = page.content().lower()
         jest_captcha = any(x in tresc for x in ["captcha", "robot", "verify you are human", "challenge"])
-        jest_retailer = retailer_lower in tresc
-
-        if jest_captcha and not jest_retailer:
-            if proba == 0:
-                print(f"  ⚠️  Wykryto captchę — rozwiąż ją w oknie przeglądarki, czekam...")
-            continue
+        jest_retailer = retailer.lower() in tresc
 
         if jest_retailer:
-            print(f"  Strona załadowana.")
             return True
-
-        if proba > 5 and not jest_retailer:
-            print(f"  Strona załadowana, ale retailer niewidoczny.")
+        if jest_captcha:
             return False
-
-    print(f"  ✗ Timeout — strona nie załadowała się w 60 sekund.")
+        if proba > 4:
+            return False
     return False
 
 def zrob_screenshot(page, url, retailer, fraza, idx, folder):
     try:
-        print(f"  Otwieram: {url}")
         page.goto(url, timeout=30000, wait_until="domcontentloaded")
-
-        zaladowana = czekaj_na_zaladowanie(page, retailer)
+        czekaj_na_zaladowanie(page, retailer)
 
         retailer_lower = retailer.lower()
-
-        # Szukaj elementu zawierającego nazwę retailera
         candidates = page.locator(f"text={retailer}").all()
         if not candidates:
-            candidates = page.locator(f"xpath=//*[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), '{retailer_lower}')]").all()
+            candidates = page.locator(
+                f"xpath=//*[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), '{retailer_lower}')]"
+            ).all()
 
         bezpieczna_fraza = re.sub(r'[^\w\-]', '_', fraza)
         bezpieczny_retailer = re.sub(r'[^\w\-]', '_', retailer)
@@ -97,8 +90,33 @@ def zrob_screenshot(page, url, retailer, fraza, idx, folder):
             return False
 
     except Exception as e:
-        print(f"  ✗ Błąd dla {url}: {e}")
+        print(f"  ✗ Błąd: {e}")
         return False
+
+def zbierz_zadania(pliki):
+    """Wczytuje wszystkie zadania z plików JSON."""
+    zadania = []
+    for plik_json in pliki:
+        sciezka_json = os.path.join(OUTPUT_FOLDER, plik_json)
+        with open(sciezka_json, "r", encoding="utf-8") as f:
+            dane = json.load(f)
+
+        fraza = dane["fraza"]
+        wyniki = dane["wyniki"]
+
+        for idx, wynik in enumerate(wyniki, 1):
+            url = None
+            retailer_name = None
+            for kol, war in wynik["dane"].items():
+                if kol and "product url" in kol.lower() and war:
+                    url = war
+                if kol and "retailer name" in kol.lower() and war:
+                    retailer_name = war
+
+            if url and retailer_name:
+                zadania.append({"fraza": fraza, "url": url, "retailer": retailer_name, "idx": idx})
+
+    return zadania
 
 def main():
     print("=== QLS — Screenshoty z Product URL ===\n")
@@ -107,45 +125,72 @@ def main():
     if not pliki:
         return
 
+    zadania = zbierz_zadania(pliki)
+    if not zadania:
+        print("Brak wyników z Product URL.")
+        return
+
     screenshots_folder = os.path.join(OUTPUT_FOLDER, "screenshots")
     os.makedirs(screenshots_folder, exist_ok=True)
 
+    # --- FAZA 1: Headless — sprawdź captchy i rób screenshoty ---
+    print(f"\nPrzetwarzam {len(zadania)} wynik(ów) w tle...\n")
+
+    z_captcha = []
+
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=False)
+        browser = p.chromium.launch(headless=True)
         page = browser.new_page(viewport={"width": 1400, "height": 900})
 
-        for plik_json in pliki:
-            sciezka_json = os.path.join(OUTPUT_FOLDER, plik_json)
-            with open(sciezka_json, "r", encoding="utf-8") as f:
-                dane = json.load(f)
+        for zadanie in zadania:
+            print(f"  [{zadanie['fraza']}] Retailer: {zadanie['retailer']}")
+            try:
+                page.goto(zadanie["url"], timeout=30000, wait_until="domcontentloaded")
+                jest_captcha, jest_retailer = sprawdz_captche(page, zadanie["retailer"])
 
-            fraza = dane["fraza"]
-            retailers = dane["retailers"]
-            wyniki = dane["wyniki"]
-
-            print(f"\n=== Fraza: {fraza} ===")
-
-            for idx, wynik in enumerate(wyniki, 1):
-                url = None
-                retailer_name = None
-
-                for kol, war in wynik["dane"].items():
-                    if kol and "product url" in kol.lower() and war:
-                        url = war
-                    if kol and "retailer name" in kol.lower() and war:
-                        retailer_name = war
-
-                if not url:
-                    print(f"  Wiersz {idx}: brak Product URL — pomijam.")
-                    continue
-                if not retailer_name:
-                    print(f"  Wiersz {idx}: brak Retailer Name — pomijam.")
-                    continue
-
-                print(f"\n  Wiersz {idx} | Retailer: {retailer_name}")
-                zrob_screenshot(page, url, retailer_name, fraza, idx, screenshots_folder)
+                if jest_captcha and not jest_retailer:
+                    print(f"  ⚠ Captcha wykryta — odkładam na później.")
+                    z_captcha.append(zadanie)
+                else:
+                    zrob_screenshot(page, zadanie["url"], zadanie["retailer"],
+                                    zadanie["fraza"], zadanie["idx"], screenshots_folder)
+            except Exception as e:
+                print(f"  ✗ Błąd: {e}")
 
         browser.close()
+
+    # --- FAZA 2: Captcha — zapytaj użytkownika ---
+    if z_captcha:
+        print(f"\n⚠  Wykryto captchę na {len(z_captcha)} wyniku/wynikach.")
+        for z in z_captcha:
+            print(f"   - [{z['fraza']}] {z['retailer']}")
+        odpowiedz = input("\nCzy chcesz otworzyć te strony i rozwiązać captchę ręcznie? (tak/nie): ").strip().lower()
+
+        if odpowiedz == "tak":
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=False)
+                page = browser.new_page(viewport={"width": 1400, "height": 900})
+
+                for zadanie in z_captcha:
+                    print(f"\n  [{zadanie['fraza']}] Retailer: {zadanie['retailer']}")
+                    print(f"  Otwieram stronę — rozwiąż captchę, czekam...")
+                    try:
+                        page.goto(zadanie["url"], timeout=30000, wait_until="domcontentloaded")
+
+                        # Czekaj aż retailer pojawi się na stronie (max 120 sekund)
+                        for _ in range(60):
+                            page.wait_for_timeout(2000)
+                            if zadanie["retailer"].lower() in page.content().lower():
+                                break
+
+                        zrob_screenshot(page, zadanie["url"], zadanie["retailer"],
+                                        zadanie["fraza"], zadanie["idx"], screenshots_folder)
+                    except Exception as e:
+                        print(f"  ✗ Błąd: {e}")
+
+                browser.close()
+        else:
+            print("Pominięto strony z captchą.")
 
     print(f"\n=== Gotowe! Screenshoty w: output/screenshots/ ===")
 
