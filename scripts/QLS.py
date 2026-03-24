@@ -26,49 +26,74 @@ def wybierz_pliki_json():
         print("Nieprawidłowy wybór.")
         return []
 
+def czekaj_na_zaladowanie(page, retailer):
+    """Czeka aż strona się załaduje i nie ma captchy."""
+    retailer_lower = retailer.lower()
+    print(f"  Czekam na załadowanie strony...")
+
+    for proba in range(30):  # max 60 sekund
+        page.wait_for_timeout(2000)
+
+        # Sprawdź czy captcha jest aktywna
+        tresc = page.content().lower()
+        jest_captcha = any(x in tresc for x in ["captcha", "robot", "verify you are human", "challenge"])
+        jest_retailer = retailer_lower in tresc
+
+        if jest_captcha and not jest_retailer:
+            if proba == 0:
+                print(f"  ⚠️  Wykryto captchę — rozwiąż ją w oknie przeglądarki, czekam...")
+            continue
+
+        if jest_retailer:
+            print(f"  Strona załadowana.")
+            return True
+
+        if proba > 5 and not jest_retailer:
+            print(f"  Strona załadowana, ale retailer niewidoczny.")
+            return False
+
+    print(f"  ✗ Timeout — strona nie załadowała się w 60 sekund.")
+    return False
+
 def zrob_screenshot(page, url, retailer, fraza, idx, folder):
     try:
         print(f"  Otwieram: {url}")
-        page.goto(url, timeout=20000, wait_until="domcontentloaded")
-        page.wait_for_timeout(2000)
+        page.goto(url, timeout=30000, wait_until="domcontentloaded")
+
+        zaladowana = czekaj_na_zaladowanie(page, retailer)
+
+        retailer_lower = retailer.lower()
 
         # Szukaj elementu zawierającego nazwę retailera
-        retailer_lower = retailer.lower()
-        element = None
-
-        # Próbuj różne selektory — szukamy tekstu retailera na stronie
         candidates = page.locator(f"text={retailer}").all()
         if not candidates:
-            # Spróbuj case-insensitive przez xpath
             candidates = page.locator(f"xpath=//*[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), '{retailer_lower}')]").all()
+
+        bezpieczna_fraza = re.sub(r'[^\w\-]', '_', fraza)
+        bezpieczny_retailer = re.sub(r'[^\w\-]', '_', retailer)
 
         if candidates:
             element = candidates[0]
-            # Idź do rodzica żeby mieć więcej kontekstu (cały wiersz)
             try:
-                element = element.locator("xpath=ancestor::tr[1]")
-                if element.count() == 0:
+                rodzic_tr = element.locator("xpath=ancestor::tr[1]")
+                if rodzic_tr.count() > 0:
+                    element = rodzic_tr
+                else:
                     element = candidates[0].locator("xpath=ancestor::*[3]")
             except:
                 element = candidates[0]
 
-            bezpieczna_fraza = re.sub(r'[^\w\-]', '_', fraza)
-            bezpieczny_retailer = re.sub(r'[^\w\-]', '_', retailer)
             nazwa_pliku = f"{bezpieczna_fraza}_{bezpieczny_retailer}_{idx}.png"
             sciezka = os.path.join(folder, nazwa_pliku)
-
             element.first.screenshot(path=sciezka)
             print(f"  ✓ Screenshot zapisany: {nazwa_pliku}")
             return True
         else:
-            print(f"  ✗ Nie znaleziono '{retailer}' na stronie.")
-            # Zapisz zrzut całej strony jako fallback
-            bezpieczna_fraza = re.sub(r'[^\w\-]', '_', fraza)
-            bezpieczny_retailer = re.sub(r'[^\w\-]', '_', retailer)
+            print(f"  ✗ Nie znaleziono '{retailer}' na stronie — zapisuję całą stronę.")
             nazwa_pliku = f"{bezpieczna_fraza}_{bezpieczny_retailer}_{idx}_calastrona.png"
             sciezka = os.path.join(folder, nazwa_pliku)
             page.screenshot(path=sciezka, full_page=False)
-            print(f"  → Zapisano zrzut całej strony: {nazwa_pliku}")
+            print(f"  → Zapisano: {nazwa_pliku}")
             return False
 
     except Exception as e:
@@ -86,7 +111,7 @@ def main():
     os.makedirs(screenshots_folder, exist_ok=True)
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
+        browser = p.chromium.launch(headless=False)
         page = browser.new_page(viewport={"width": 1400, "height": 900})
 
         for plik_json in pliki:
