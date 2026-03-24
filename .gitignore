@@ -1,5 +1,5 @@
 .DS_Store
 CLAUDE.md
-venv/
+_internal/
 output/
 __pycache__/
