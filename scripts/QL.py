@@ -142,12 +142,15 @@ def szukaj(fraza, retailers):
                     zawartosc_wiersza = " ".join(v for v in wartosci if v)
 
                     fraza_ok = fraza.lower() in zawartosc_wiersza.lower()
-                    retailer_ok = any(
-                        r.lower() in (v or "").lower()
-                        for r in retailers
-                        for k, v in wiersz.items()
-                        if k and "retailer name" in k.lower()
-                    )
+                    if retailers:
+                        retailer_ok = any(
+                            r.lower() in (v or "").lower()
+                            for r in retailers
+                            for k, v in wiersz.items()
+                            if k and "retailer name" in k.lower()
+                        )
+                    else:
+                        retailer_ok = True
 
                     if fraza_ok and retailer_ok:
                         znalezione.append({
@@ -199,13 +202,10 @@ if __name__ == "__main__":
             if r == "":
                 break
             retailers.append(r)
-        if retailers:
-            frazy = [f.strip() for f in re.split(r'[,\s]+', fraza) if f.strip()]
-            for f in frazy:
-                zadania.append((f, retailers))
-            nr += 1
-        else:
-            print("Nie podano żadnego Retailer Name — fraza pominięta.\n")
+        frazy = [f.strip() for f in re.split(r'[,\s]+', fraza) if f.strip()]
+        for f in frazy:
+            zadania.append((f, retailers))
+        nr += 1
 
     if not zadania:
         print("Nie podano żadnych fraz.")
